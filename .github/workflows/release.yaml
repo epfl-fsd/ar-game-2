@@ -1,0 +1,72 @@
+name: Release
+
+on:
+    push:
+        branches: [main]
+
+jobs:
+    lint:
+        uses: ./.github/workflows/_lint.yaml
+
+    detect-version:
+        name: Detect Version
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: read
+        outputs:
+            version: ${{ steps.detect.outputs.version }}
+            tags: ${{ steps.tags.outputs.tags }}
+            should_release: ${{ steps.detect.outputs.release_exist == 'false' }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+
+            - name: Detect version
+              id: detect
+              uses: dwesh163/actions/detect-version@main
+              with:
+                  type: js
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Compute image tags
+              id: tags
+              run: |
+                  IMAGE=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+                  {
+                    echo "tags<<EOF"
+                    echo "${IMAGE}:latest"
+                    echo "${IMAGE}:${{ steps.detect.outputs.version }}"
+                    echo "EOF"
+                  } >> $GITHUB_OUTPUT
+
+    build:
+        name: Build and Push
+        needs: [lint, detect-version]
+        if: needs.detect-version.outputs.should_release == 'true'
+        permissions:
+            contents: read
+            packages: write
+        uses: ./.github/workflows/_build.yaml
+        with:
+            tags: ${{ needs.detect-version.outputs.tags }}
+            version: ${{ needs.detect-version.outputs.version }}
+        secrets: inherit
+
+    create-release:
+        name: Create Release
+        needs: [detect-version, build]
+        if: needs.build.outputs.build_success == 'true'
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: write
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+              with:
+                  fetch-depth: 0
+
+            - name: Create release
+              uses: dwesh163/actions/release@main
+              with:
+                  version: ${{ needs.detect-version.outputs.version }}
+                  github-token: ${{ secrets.GITHUB_TOKEN }}

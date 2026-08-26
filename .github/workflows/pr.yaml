@@ -1,0 +1,46 @@
+name: Pull Request
+
+on:
+    pull_request:
+
+jobs:
+    prepare:
+        name: Prepare
+        runs-on: ubuntu-24.04
+        permissions:
+            contents: read
+        outputs:
+            tag: ${{ steps.compute.outputs.tag }}
+            version: ${{ steps.compute.outputs.version }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v5
+
+            - name: Detect version
+              id: detect
+              uses: dwesh163/actions/detect-version@main
+              with:
+                  type: js
+                  github-token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Compute image tag
+              id: compute
+              run: |
+                  IMAGE=$(echo "ghcr.io/${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
+                  BRANCH=$(echo "${{ github.head_ref }}" | sed 's/[^a-zA-Z0-9._-]/-/g')
+                  SHA="${{ github.sha }}"
+                  VERSION="${{ steps.detect.outputs.version }}-${BRANCH}-${SHA:0:7}"
+                  echo "tag=${IMAGE}:${VERSION}" >> $GITHUB_OUTPUT
+                  echo "version=${VERSION}" >> $GITHUB_OUTPUT
+
+    lint:
+        uses: ./.github/workflows/_lint.yaml
+
+    build:
+        name: Build and Push
+        needs: [prepare, lint]
+        uses: ./.github/workflows/_build.yaml
+        with:
+            tags: ${{ needs.prepare.outputs.tag }}
+            version: ${{ needs.prepare.outputs.version }}
+        secrets: inherit
