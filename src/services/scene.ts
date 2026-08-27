@@ -1,19 +1,25 @@
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
+import { FIST_ENTER_THRESHOLD, FIST_EXIT_THRESHOLD } from "@/constants/hand";
+import { MODELS } from "@/constants/models";
 import {
   CULL_X,
   CULL_Y,
+  FINGERS_ENABLED,
   GRAVITY,
   HAND_SCALE_MAX,
   HAND_SCALE_MIN,
   HAND_SCALE_REF_PX,
+  HUD_TOGGLE_HOLD_MS,
   LAUNCH_COOLDOWN_MS,
   LAUNCH_SPEED,
   LOGO_TARGET_SIZE,
   MAX_PROJECTILES,
 } from "@/constants/scene";
-import { normalizedDirection, pixelDistance } from "@/lib/gestures";
+import { isFist, normalizedDirection, pixelDistance } from "@/lib/gestures";
 import { createHandHudPool } from "@/services/handHud";
+import { createModelSelector } from "@/services/selector";
+import { createHoldToggle } from "@/services/toggle";
 import type { HandFrame, HandLandmarks } from "@/types/hand";
 import type { ThreeSceneHandle } from "@/types/scene";
 
@@ -25,9 +31,15 @@ interface Projectile {
   vy: number;
 }
 
+interface LoadedModel {
+  geometry: THREE.BufferGeometry;
+  baseScale: number;
+  color: number;
+}
+
 export function createThreeScene(
   canvas: HTMLCanvasElement,
-  options: { maxHands: number; stlUrl: string; logoColor: number },
+  options: { maxHands: number },
 ): ThreeSceneHandle {
   let width = canvas.clientWidth || window.innerWidth;
   let height = canvas.clientHeight || window.innerHeight;
@@ -59,38 +71,6 @@ export function createThreeScene(
   rimLight.position.set(4, -2, -5);
   scene.add(rimLight);
 
-  let logoGeometry: THREE.BufferGeometry | null = null;
-  let logoBaseScale = 1;
-
-  new STLLoader().load(
-    options.stlUrl,
-    (geometry) => {
-      geometry.computeBoundingBox();
-      geometry.computeVertexNormals();
-      const center = new THREE.Vector3();
-      const size = new THREE.Vector3();
-      geometry.boundingBox?.getCenter(center);
-      geometry.boundingBox?.getSize(size);
-      geometry.translate(-center.x, -center.y, -center.z);
-      logoBaseScale = LOGO_TARGET_SIZE / Math.max(size.x, size.y, size.z);
-      logoGeometry = geometry;
-    },
-    undefined,
-    (error) => console.warn("EPFL.stl failed to load:", error),
-  );
-
-  function createLogoMesh(): LogoMesh | null {
-    if (!logoGeometry) return null;
-    const material = new THREE.MeshStandardMaterial({
-      color: options.logoColor,
-      metalness: 0.25,
-      roughness: 0.35,
-    });
-    const mesh: LogoMesh = new THREE.Mesh(logoGeometry, material);
-    scene.add(mesh);
-    return mesh;
-  }
-
   function lmToWorld(lm: { x: number; y: number }): { x: number; y: number } {
     const nx = (1 - lm.x) * 2 - 1;
     const ny = -(lm.y * 2 - 1);
@@ -104,6 +84,80 @@ export function createThreeScene(
   const launchCooldown: boolean[] = Array(options.maxHands).fill(false);
   const projectiles: Projectile[] = [];
   const hud = createHandHudPool(scene, options.maxHands);
+  const modelSelector = createModelSelector(scene, frustumHalfHeight);
+  modelSelector.resize(width, height);
+
+  // Toggle the HUD via the "F" key (components/scene.tsx) or by holding a
+  // closed fist continuously for HUD_TOGGLE_HOLD_MS.
+  let hudEnabled = FINGERS_ENABLED;
+
+  function toggleFingersHud() {
+    hudEnabled = !hudEnabled;
+    hud.setEnabled(hudEnabled);
+  }
+
+  const fingersHoldToggle = createHoldToggle({
+    maxHands: options.maxHands,
+    holdMs: HUD_TOGGLE_HOLD_MS,
+    isHeld: (landmarks, alreadyEngaged) =>
+      isFist(
+        landmarks,
+        alreadyEngaged ? FIST_EXIT_THRESHOLD : FIST_ENTER_THRESHOLD,
+      ),
+    onToggle: toggleFingersHud,
+  });
+
+  const loadedModels: (LoadedModel | null)[] = Array(MODELS.length).fill(null);
+  let activeModelIndex = 0;
+
+  const stlLoader = new STLLoader();
+  MODELS.forEach((model, index) => {
+    stlLoader.load(
+      model.stlUrl,
+      (geometry) => {
+        geometry.computeBoundingBox();
+        geometry.computeVertexNormals();
+        const center = new THREE.Vector3();
+        const size = new THREE.Vector3();
+        geometry.boundingBox?.getCenter(center);
+        geometry.boundingBox?.getSize(size);
+        geometry.translate(-center.x, -center.y, -center.z);
+        loadedModels[index] = {
+          geometry,
+          baseScale: LOGO_TARGET_SIZE / Math.max(size.x, size.y, size.z),
+          color: model.color,
+        };
+      },
+      undefined,
+      (error) => console.warn(`${model.stlUrl} failed to load:`, error),
+    );
+  });
+
+  function createLogoMesh(): LogoMesh | null {
+    const model = loadedModels[activeModelIndex];
+    if (!model) return null;
+    const material = new THREE.MeshStandardMaterial({
+      color: model.color,
+      metalness: 0.25,
+      roughness: 0.35,
+      side: THREE.DoubleSide,
+    });
+    const mesh: LogoMesh = new THREE.Mesh(model.geometry, material);
+    scene.add(mesh);
+    return mesh;
+  }
+
+  /** Swaps every currently-held mesh over to the newly selected model. */
+  function setActiveModel(index: number) {
+    const model = loadedModels[index];
+    if (!model || index === activeModelIndex) return;
+    activeModelIndex = index;
+    for (const mesh of held) {
+      if (!mesh) continue;
+      mesh.geometry = model.geometry;
+      mesh.material.color.set(model.color);
+    }
+  }
 
   function launch(slot: number, landmarks: HandLandmarks) {
     const mesh = held[slot];
@@ -149,7 +203,9 @@ export function createThreeScene(
 
     mesh.visible = true;
     mesh.position.set(palmWorld.x, palmWorld.y, 0);
-    mesh.scale.setScalar(scale * logoBaseScale);
+    mesh.scale.setScalar(
+      scale * (loadedModels[activeModelIndex]?.baseScale ?? 1),
+    );
   }
 
   function updateHands(frames: HandFrame[]) {
@@ -159,6 +215,8 @@ export function createThreeScene(
       if (!activeSlots.has(slot) && mesh) mesh.visible = false;
       if (!activeSlots.has(slot)) hud.hide(slot);
     }
+
+    fingersHoldToggle.update(frames);
 
     for (const frame of frames) {
       if (
@@ -172,6 +230,9 @@ export function createThreeScene(
       }
       hud.update(frame.slot, frame.landmarks, lmToWorld);
     }
+
+    const selected = modelSelector.update(frames, lmToWorld);
+    if (selected !== null) setActiveModel(selected);
   }
 
   function resize(nextWidth: number, nextHeight: number) {
@@ -180,6 +241,18 @@ export function createThreeScene(
     camera.aspect = width / height;
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
+    modelSelector.resize(width, height);
+  }
+
+  // Captures the AR canvas the next time it renders, avoiding the perf cost
+  // of preserveDrawingBuffer (the WebGL buffer is otherwise only valid for
+  // the instant right after render() is called).
+  let pendingCapture: ((dataUrl: string) => void) | null = null;
+
+  function requestPhoto(callback: (dataUrl: string) => void) {
+    if (pendingCapture) return;
+    modelSelector.setVisible(false);
+    pendingCapture = callback;
   }
 
   let rafId: number;
@@ -199,6 +272,13 @@ export function createThreeScene(
       }
     }
     renderer.render(scene, camera);
+    if (pendingCapture) {
+      const callback = pendingCapture;
+      pendingCapture = null;
+      const dataUrl = renderer.domElement.toDataURL("image/png");
+      modelSelector.setVisible(true);
+      callback(dataUrl);
+    }
   }
   animate();
 
@@ -216,9 +296,12 @@ export function createThreeScene(
     }
     projectiles.length = 0;
     hud.dispose();
-    logoGeometry?.dispose();
+    modelSelector.dispose();
+    for (const model of loadedModels) {
+      model?.geometry.dispose();
+    }
     renderer.dispose();
   }
 
-  return { updateHands, resize, dispose };
+  return { updateHands, resize, toggleFingersHud, requestPhoto, dispose };
 }

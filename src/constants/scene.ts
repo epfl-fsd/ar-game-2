@@ -1,5 +1,3 @@
-export const STL_URL = "/EPFL.stl";
-export const LOGO_COLOR = 0xc8002a;
 export const LOGO_TARGET_SIZE = 1.6;
 
 export const MAX_PROJECTILES = 60;
