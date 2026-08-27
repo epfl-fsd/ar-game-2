@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { FINGERTIPS, WRIST } from "@/constants/hand";
 import {
+  FINGERS_ENABLED,
   HUD_COLOR,
   HUD_LINE_OPACITY,
   HUD_SQUARE_SIZE,
@@ -22,6 +23,7 @@ interface HandHud {
 export interface HandHudPool {
   update(slot: number, landmarks: HandLandmarks, lmToWorld: ToWorld): void;
   hide(slot: number): void;
+  setEnabled(enabled: boolean): void;
   dispose(): void;
 }
 
@@ -41,6 +43,8 @@ export function createHandHudPool(
   scene: THREE.Scene,
   maxHands: number,
 ): HandHudPool {
+  let enabled = FINGERS_ENABLED;
+
   const material = new THREE.LineBasicMaterial({
     color: HUD_COLOR,
     transparent: true,
@@ -61,6 +65,10 @@ export function createHandHudPool(
   }
 
   function update(slot: number, landmarks: HandLandmarks, lmToWorld: ToWorld) {
+    if (!enabled) {
+      hide(slot);
+      return;
+    }
     const hud = huds[slot];
     if (!hud) return;
     hud.group.visible = true;
@@ -107,6 +115,13 @@ export function createHandHudPool(
     if (hud) hud.group.visible = false;
   }
 
+  function setEnabled(next: boolean) {
+    enabled = next;
+    if (!enabled) {
+      for (let slot = 0; slot < maxHands; slot++) hide(slot);
+    }
+  }
+
   function dispose() {
     for (const hud of huds) {
       scene.remove(hud.group);
@@ -116,5 +131,5 @@ export function createHandHudPool(
     material.dispose();
   }
 
-  return { update, hide, dispose };
+  return { update, hide, setEnabled, dispose };
 }
