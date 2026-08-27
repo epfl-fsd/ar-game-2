@@ -6,3 +6,10 @@ export interface ThreeSceneHandle {
   toggleFingersHud(): void;
   dispose(): void;
 }
+
+export interface ModelDef {
+  id: string;
+  name: string;
+  stlUrl: string;
+  color: number;
+}
