@@ -1,7 +1,17 @@
+import { WRIST } from "@/constants/hand";
 import type { HandLandmarks, Landmark } from "@/types/hand";
 
 const THUMB_TIP = 4;
 const INDEX_TIP = 8;
+
+// [MCP, TIP] pairs for the 4 non-thumb fingers. Thumb is excluded: its curl
+// geometry (moves across the palm) doesn't fit this wrist-distance ratio model.
+const FINGERS: ReadonlyArray<readonly [number, number]> = [
+  [5, 8], // index
+  [9, 12], // middle
+  [13, 16], // ring
+  [17, 20], // pinky
+];
 
 /** Euclidean distance between two landmarks, scaled to pixel space. */
 export function pixelDistance(
@@ -33,6 +43,28 @@ export function isPinching(
   return (
     pixelDistance(lms[THUMB_TIP], lms[INDEX_TIP], width, height) < thresholdPx
   );
+}
+
+/**
+ * Scale-invariant "closed fist" score: mean, over the 4 non-thumb fingers, of
+ * (tip-to-wrist distance / MCP-to-wrist distance). An extended finger's tip
+ * sits well beyond its knuckle relative to the wrist (ratio ~1.4-2.2); a
+ * curled finger's tip folds back toward the wrist (ratio drops below ~1.0).
+ * Uses x/y only (ignores MediaPipe's noisier relative z).
+ */
+export function fistScore(lms: HandLandmarks): number {
+  const wrist = lms[WRIST];
+  let sum = 0;
+  for (const [mcp, tip] of FINGERS) {
+    const tipToWrist = Math.hypot(lms[tip].x - wrist.x, lms[tip].y - wrist.y);
+    const mcpToWrist = Math.hypot(lms[mcp].x - wrist.x, lms[mcp].y - wrist.y);
+    sum += tipToWrist / mcpToWrist;
+  }
+  return sum / FINGERS.length;
+}
+
+export function isFist(lms: HandLandmarks, threshold: number): boolean {
+  return fistScore(lms) < threshold;
 }
 
 /**
