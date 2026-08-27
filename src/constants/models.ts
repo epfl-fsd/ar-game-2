@@ -6,6 +6,7 @@ export const MODELS: ModelDef[] = [
     id: "rlc",
     name: "Rolex Learning Center",
     stlUrl: "/RLC.stl",
-    color: 0xc9a227,
+    color: 0xd9d9d9,
+    rotation: { x: Math.PI / 6 },
   },
 ];

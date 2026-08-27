@@ -9,6 +9,8 @@ import {
   SELECTOR_CHECK_COLOR,
   SELECTOR_COOLDOWN_MS,
   SELECTOR_HOVER_MS,
+  SELECTOR_LOADER_COLOR,
+  SELECTOR_LOADER_SPIN_RAD_PER_MS,
   SELECTOR_PREVIEW_SIZE,
   SELECTOR_PREVIEW_SPIN_RAD_PER_MS,
   SELECTOR_PROGRESS_COLOR,
@@ -35,6 +37,7 @@ interface Box {
   progress: number;
   preview: PreviewMesh | null;
   check: THREE.Sprite;
+  loader: THREE.Sprite;
   cooldown: boolean;
 }
 
@@ -48,6 +51,9 @@ export interface ModelSelector {
 
 function loadPreviewMesh(model: ModelDef, onLoad: (mesh: PreviewMesh) => void) {
   new STLLoader().load(model.stlUrl, (geometry) => {
+    if (model.rotation?.x) geometry.rotateX(model.rotation.x);
+    if (model.rotation?.y) geometry.rotateY(model.rotation.y);
+    if (model.rotation?.z) geometry.rotateZ(model.rotation.z);
     geometry.computeBoundingBox();
     geometry.computeVertexNormals();
     const center = new THREE.Vector3();
@@ -94,6 +100,31 @@ function makeCheckSprite(): THREE.Sprite {
   const sprite = new THREE.Sprite(material);
   sprite.scale.set(SELECTOR_PREVIEW_SIZE, SELECTOR_PREVIEW_SIZE, 1);
   sprite.visible = false;
+  return sprite;
+}
+
+/** Spinning partial ring shown in a box while its STL preview is still loading. */
+function makeLoaderSprite(): THREE.Sprite {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const ctx = canvas.getContext("2d");
+  if (ctx) {
+    ctx.strokeStyle = SELECTOR_LOADER_COLOR;
+    ctx.lineWidth = 10;
+    ctx.lineCap = "round";
+    ctx.beginPath();
+    ctx.arc(64, 64, 48, 0, Math.PI * 1.5);
+    ctx.stroke();
+  }
+  const texture = new THREE.CanvasTexture(canvas);
+  const material = new THREE.SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+  });
+  const sprite = new THREE.Sprite(material);
+  sprite.scale.set(SELECTOR_PREVIEW_SIZE * 0.7, SELECTOR_PREVIEW_SIZE * 0.7, 1);
   return sprite;
 }
 
@@ -144,6 +175,9 @@ export function createModelSelector(
     const check = makeCheckSprite();
     outline.add(check);
 
+    const loader = makeLoaderSprite();
+    outline.add(loader);
+
     const box: Box = {
       center: { x: 0, y: 0 },
       outline,
@@ -152,10 +186,12 @@ export function createModelSelector(
       progress: 0,
       preview: null,
       check,
+      loader,
       cooldown: false,
     };
     loadPreviewMesh(model, (mesh) => {
       box.preview = mesh;
+      box.loader.visible = false;
       outline.add(mesh);
     });
     return box;
@@ -182,8 +218,11 @@ export function createModelSelector(
     let selected: number | null = null;
 
     boxes.forEach((box, i) => {
-      if (box.preview)
+      if (box.preview) {
         box.preview.rotation.y += SELECTOR_PREVIEW_SPIN_RAD_PER_MS * dt;
+      } else {
+        box.loader.material.rotation -= SELECTOR_LOADER_SPIN_RAD_PER_MS * dt;
+      }
 
       if (box.cooldown) return;
 
