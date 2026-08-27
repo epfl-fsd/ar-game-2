@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 import CameraDeniedPage from "@/components/denied";
 import CameraLoader from "@/components/loader";
-import PhotoDialog from "@/components/photo-dialog";
 import { DEDUP_THRESH_PX, MAX_HANDS, PINCH_THRESH_PX } from "@/constants/hand";
 import { CAPTURE_HEIGHT, CAPTURE_WIDTH } from "@/constants/mediapipe";
+import { PHOTO_COUNTDOWN_S } from "@/constants/scene";
 import { isPinching, palmDistance } from "@/lib/gestures";
+import { addPhotoFrame } from "@/services/photo";
 import { createThreeScene } from "@/services/scene";
 import { createKeyToggle } from "@/services/toggle";
 import { createHandTracker } from "@/services/tracker";
@@ -29,11 +30,41 @@ function dedupeHands(
 
 type CameraStatus = "pending" | "loading" | "ready" | "error";
 
-export default function ArScene() {
+export default function ArScene({
+  onPhotoCaptured,
+}: {
+  onPhotoCaptured: (dataUrl: string) => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [cameraStatus, setCameraStatus] = useState<CameraStatus>("pending");
-  const [photo, setPhoto] = useState<string | null>(null);
+  const [countdown, setCountdown] = useState<number | null>(null);
+
+  // Kept in a ref (rather than an effect dependency) so the capture
+  // pipeline always calls the latest callback without needing to tear down
+  // and restart the camera/tracker/Three.js scene when it changes identity.
+  const onPhotoCapturedRef = useRef(onPhotoCaptured);
+  onPhotoCapturedRef.current = onPhotoCaptured;
+
+  // capturePhoto itself lives inside the effect below (it needs the video/
+  // scene instances), so it's exposed here for the countdown effect to call.
+  const capturePhotoRef = useRef<() => void>(() => {});
+
+  // Ticks the on-screen countdown down to 0, then fires the actual capture.
+  // A pending tick is cleared on unmount/re-run, so a photo never fires
+  // after the component (or a mid-countdown re-render) has gone away.
+  useEffect(() => {
+    if (countdown === null) return;
+    if (countdown <= 1) {
+      const timer = setTimeout(() => {
+        capturePhotoRef.current();
+        setCountdown(null);
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+    const timer = setTimeout(() => setCountdown((c) => (c ?? 1) - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [countdown]);
 
   useEffect(() => {
     const video = videoRef.current;
@@ -87,12 +118,17 @@ export default function ArScene() {
         const arImage = new Image();
         arImage.onload = () => {
           ctx.drawImage(arImage, 0, 0, width, height);
-          setPhoto(output.toDataURL("image/png"));
+          addPhotoFrame(output).then((framedDataUrl) => {
+            onPhotoCapturedRef.current(framedDataUrl);
+          });
         };
         arImage.src = arDataUrl;
       });
     };
-    const removePhotoKeyToggle = createKeyToggle("p", capturePhoto);
+    capturePhotoRef.current = capturePhoto;
+    const removePhotoKeyToggle = createKeyToggle("p", () =>
+      setCountdown((current) => current ?? PHOTO_COUNTDOWN_S),
+    );
 
     // Edge-trigger state per hand slot; a slot is simply the hand's index in
     // this frame's deduped landmark list (mirrors ar-game-1, which never
@@ -123,7 +159,11 @@ export default function ArScene() {
             return { slot, landmarks, justPinched };
           });
 
-        scene.updateHands(frames);
+        // The capture trigger box (top of screen) works exactly like the
+        // model selector: hold a landmark inside it to arm the countdown.
+        if (scene.updateHands(frames)) {
+          setCountdown((current) => current ?? PHOTO_COUNTDOWN_S);
+        }
       },
       onPermissionGranted: () => {
         if (!disposed) setCameraStatus("loading");
@@ -177,10 +217,16 @@ export default function ArScene() {
         className="absolute inset-0 h-full w-full pointer-events-none"
       />
       {cameraStatus === "pending" && (
-        <CameraLoader text="Waiting for camera permission…" />
+        <CameraLoader text="En attente de l'autorisation de la caméra…" />
       )}
-      {cameraStatus === "loading" && <CameraLoader text="Loading…" />}
-      <PhotoDialog photo={photo} onClose={() => setPhoto(null)} />
+      {cameraStatus === "loading" && <CameraLoader text="Chargement…" />}
+      {countdown !== null && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <span className="text-9xl font-bold text-white drop-shadow-lg">
+            {countdown}
+          </span>
+        </div>
+      )}
     </>
   );
 }
