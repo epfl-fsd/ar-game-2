@@ -17,7 +17,8 @@ import {
   MAX_PROJECTILES,
 } from "@/constants/scene";
 import { isFist, normalizedDirection, pixelDistance } from "@/lib/gestures";
-import { createHandHudPool } from "@/services/handHud";
+import { createCaptureTrigger } from "@/services/capture";
+import { createHandHudPool } from "@/services/hand";
 import { createModelSelector } from "@/services/selector";
 import { createHoldToggle } from "@/services/toggle";
 import type { HandFrame, HandLandmarks } from "@/types/hand";
@@ -86,6 +87,8 @@ export function createThreeScene(
   const hud = createHandHudPool(scene, options.maxHands);
   const modelSelector = createModelSelector(scene, frustumHalfHeight);
   modelSelector.resize(width, height);
+  const captureTrigger = createCaptureTrigger(scene, frustumHalfHeight);
+  captureTrigger.resize(width, height);
 
   // Toggle the HUD via the "F" key (components/scene.tsx) or by holding a
   // closed fist continuously for HUD_TOGGLE_HOLD_MS.
@@ -115,6 +118,9 @@ export function createThreeScene(
     stlLoader.load(
       model.stlUrl,
       (geometry) => {
+        if (model.rotation?.x) geometry.rotateX(model.rotation.x);
+        if (model.rotation?.y) geometry.rotateY(model.rotation.y);
+        if (model.rotation?.z) geometry.rotateZ(model.rotation.z);
         geometry.computeBoundingBox();
         geometry.computeVertexNormals();
         const center = new THREE.Vector3();
@@ -208,7 +214,7 @@ export function createThreeScene(
     );
   }
 
-  function updateHands(frames: HandFrame[]) {
+  function updateHands(frames: HandFrame[]): boolean {
     const activeSlots = new Set(frames.map((frame) => frame.slot));
     for (let slot = 0; slot < options.maxHands; slot++) {
       const mesh = held[slot];
@@ -233,6 +239,8 @@ export function createThreeScene(
 
     const selected = modelSelector.update(frames, lmToWorld);
     if (selected !== null) setActiveModel(selected);
+
+    return captureTrigger.update(frames, lmToWorld);
   }
 
   function resize(nextWidth: number, nextHeight: number) {
@@ -242,6 +250,7 @@ export function createThreeScene(
     camera.updateProjectionMatrix();
     renderer.setSize(width, height, false);
     modelSelector.resize(width, height);
+    captureTrigger.resize(width, height);
   }
 
   // Captures the AR canvas the next time it renders, avoiding the perf cost
@@ -252,6 +261,7 @@ export function createThreeScene(
   function requestPhoto(callback: (dataUrl: string) => void) {
     if (pendingCapture) return;
     modelSelector.setVisible(false);
+    captureTrigger.setVisible(false);
     pendingCapture = callback;
   }
 
@@ -277,6 +287,7 @@ export function createThreeScene(
       pendingCapture = null;
       const dataUrl = renderer.domElement.toDataURL("image/png");
       modelSelector.setVisible(true);
+      captureTrigger.setVisible(true);
       callback(dataUrl);
     }
   }
@@ -297,6 +308,7 @@ export function createThreeScene(
     projectiles.length = 0;
     hud.dispose();
     modelSelector.dispose();
+    captureTrigger.dispose();
     for (const model of loadedModels) {
       model?.geometry.dispose();
     }
