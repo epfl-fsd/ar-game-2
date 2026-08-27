@@ -22,3 +22,24 @@ export const HUD_LINE_OPACITY = 0.85;
 
 // Toggle the HUD on/off by holding a closed fist continuously this long.
 export const HUD_TOGGLE_HOLD_MS = 10000;
+
+// Model-selector boxes: hold a fingertip inside one to switch the held model.
+// Stacked vertically in the bottom-right corner.
+export const SELECTOR_BOX_SIZE = 0.85;
+export const SELECTOR_BOX_MARGIN_X = 0.75; // fraction of horizontal half-extent
+export const SELECTOR_BOX_Y = 0.62; // fraction of vertical half-extent, bottom-most box
+export const SELECTOR_STACK_GAP = 0.15; // vertical gap between stacked boxes
+export const SELECTOR_HOVER_MS = 1100;
+export const SELECTOR_BOX_COLOR = 0xffffff;
+export const SELECTOR_PROGRESS_COLOR = 0xffffff;
+export const SELECTOR_SPIN_RAD_PER_MS = 0.006;
+
+/** Target size (world units) of the mini logo preview rendered inside each box. */
+export const SELECTOR_PREVIEW_SIZE = SELECTOR_BOX_SIZE * 0.55;
+/** Idle rotation speed of the mini logo preview, independent of hover state. */
+export const SELECTOR_PREVIEW_SPIN_RAD_PER_MS = 0.0012;
+
+// Confirmed selection: show a checkmark, then ignore hover for a beat so the
+// same box doesn't immediately re-trigger while the fingertip is still in it.
+export const SELECTOR_CHECK_COLOR = "#22c55e";
+export const SELECTOR_COOLDOWN_MS = 900;
