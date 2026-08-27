@@ -128,3 +128,17 @@
     @apply font-sans;
   }
 }
+
+@keyframes indeterminate-progress {
+  from {
+    transform: translateX(-100%);
+  }
+  to {
+    transform: translateX(300%);
+  }
+}
+
+[data-slot="progress-indicator"][data-indeterminate] {
+  width: 33%;
+  animation: indeterminate-progress 1.1s ease-in-out infinite;
+}
