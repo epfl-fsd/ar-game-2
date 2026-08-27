@@ -11,15 +11,15 @@ export default function CameraDeniedPage() {
           </div>
         </div>
         <div className="space-y-3">
-          <h1 className="text-2xl font-bold">Camera access denied</h1>
+          <h1 className="text-2xl font-bold">Accès à la caméra refusé</h1>
           <p className="text-black/70">
-            AR EPFL needs your camera to detect your hands and display the logo
-            in augmented reality. Without this permission, the experience can't
-            start.
+            AR EPFL a besoin de ta caméra pour détecter tes mains et afficher le
+            logo en réalité augmentée. Sans cette autorisation, l'expérience ne
+            peut pas démarrer.
           </p>
           <p className="text-black/70">
-            Open your browser settings, allow camera access for this site, then
-            reload the page to try again.
+            Ouvre les réglages de ton navigateur, autorise l'accès à la caméra
+            pour ce site, puis recharge la page pour réessayer.
           </p>
         </div>
         <div className="flex justify-center">
@@ -28,7 +28,7 @@ export default function CameraDeniedPage() {
             className="gap-2 py-5"
           >
             <RefreshCw className="h-4 w-4" />
-            Reload page
+            Recharger la page
           </Button>
         </div>
       </div>
