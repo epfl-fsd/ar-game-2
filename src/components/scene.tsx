@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { DEDUP_THRESH_PX, MAX_HANDS, PINCH_THRESH_PX } from "@/constants/hand";
 import { CAPTURE_HEIGHT, CAPTURE_WIDTH } from "@/constants/mediapipe";
 import { LOGO_COLOR, STL_URL } from "@/constants/scene";
@@ -24,9 +24,12 @@ function dedupeHands(
   return deduped;
 }
 
+type CameraStatus = "pending" | "ready" | "error";
+
 export default function ArScene() {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [cameraStatus, setCameraStatus] = useState<CameraStatus>("pending");
 
   useEffect(() => {
     const video = videoRef.current;
@@ -81,10 +84,15 @@ export default function ArScene() {
     tracker
       .start()
       .then(() => {
-        if (disposed) tracker.stop();
+        if (disposed) {
+          tracker.stop();
+        } else {
+          setCameraStatus("ready");
+        }
       })
       .catch((error) => {
         console.error("Failed to start camera/hand tracking:", error);
+        if (!disposed) setCameraStatus("error");
       });
 
     return () => {
@@ -108,6 +116,15 @@ export default function ArScene() {
         ref={canvasRef}
         className="absolute inset-0 h-full w-full pointer-events-none"
       />
+      {cameraStatus !== "ready" && (
+        <div className="absolute inset-0 flex items-center justify-center bg-black/60 px-6 text-center text-white">
+          <p>
+            {cameraStatus === "pending"
+              ? "En attente de l'autorisation d'accès à la caméra…"
+              : "Impossible d'accéder à la caméra. Vérifiez les autorisations et rechargez la page."}
+          </p>
+        </div>
+      )}
     </>
   );
 }
