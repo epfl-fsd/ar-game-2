@@ -26,9 +26,9 @@ function loadScript(src: string): Promise<void> {
   });
 }
 
-/** Idempotent, promise-cached lazy load of the MediaPipe Hands + Camera CDN scripts. */
+/** Idempotent, promise-cached lazy load of the MediaPipe Hands CDN script. */
 export function loadMediaPipeScripts(): Promise<void> {
-  if (typeof window !== "undefined" && window.Hands && window.Camera) {
+  if (typeof window !== "undefined" && window.Hands) {
     return Promise.resolve();
   }
   if (!loadPromise) {

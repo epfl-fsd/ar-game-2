@@ -6,17 +6,44 @@ import {
 } from "@/constants/mediapipe";
 import { loadMediaPipeScripts } from "@/services/mediapipe";
 import type { HandTracker, HandTrackerOptions } from "@/types/hand";
-import type {
-  MediaPipeCameraInstance,
-  MediaPipeHandsInstance,
-} from "@/types/mediapipe";
+import type { MediaPipeHandsInstance } from "@/types/mediapipe";
 
 export function createHandTracker(options: HandTrackerOptions): HandTracker {
   let hands: MediaPipeHandsInstance | null = null;
-  let camera: MediaPipeCameraInstance | null = null;
+  let stream: MediaStream | null = null;
+  let frameId: number | null = null;
+  let running = false;
+  let cancelled = false;
 
   async function start() {
+    const acquiredStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user",
+        width: options.width,
+        height: options.height,
+      },
+    });
+    if (cancelled) {
+      for (const track of acquiredStream.getTracks()) track.stop();
+      return;
+    }
+    stream = acquiredStream;
+    options.video.srcObject = stream;
+    options.onPermissionGranted?.();
+
+    try {
+      await options.video.play();
+    } catch (error) {
+      // stop() clears srcObject mid-flight (e.g. React Strict Mode's
+      // double effect invocation in dev), which aborts this play()
+      // request; that's an expected cancellation, not a real failure.
+      if (cancelled) return;
+      throw error;
+    }
+    if (cancelled) return;
+
     await loadMediaPipeScripts();
+    if (cancelled) return;
 
     hands = new window.Hands({
       locateFile: (file) => `${MEDIAPIPE_HANDS_LOCATE_FILE_BASE}${file}`,
@@ -31,25 +58,26 @@ export function createHandTracker(options: HandTrackerOptions): HandTracker {
       options.onResults(results.multiHandLandmarks ?? []);
     });
 
-    camera = new window.Camera(options.video, {
-      onFrame: async () => {
-        if (hands) await hands.send({ image: options.video });
-      },
-      width: options.width,
-      height: options.height,
-    });
-    await camera.start();
+    running = true;
+    const pump = async () => {
+      if (!running || !hands) return;
+      await hands.send({ image: options.video });
+      if (running) frameId = requestAnimationFrame(pump);
+    };
+    frameId = requestAnimationFrame(pump);
   }
 
   function stop() {
-    camera?.stop?.();
-    camera = null;
+    cancelled = true;
+    running = false;
+    if (frameId !== null) cancelAnimationFrame(frameId);
+    frameId = null;
 
-    for (const track of (
-      options.video.srcObject as MediaStream | null
-    )?.getTracks() ?? []) {
+    for (const track of stream?.getTracks() ?? []) {
       track.stop();
     }
+    stream = null;
+    options.video.srcObject = null;
 
     hands?.close?.();
     hands = null;

@@ -20,6 +20,8 @@ export interface HandTrackerOptions {
   width: number;
   height: number;
   onResults: (hands: HandLandmarks[]) => void;
+  /** Fires once getUserMedia resolves, before MediaPipe's assets are loaded. */
+  onPermissionGranted?: () => void;
 }
 
 export interface HandTracker {

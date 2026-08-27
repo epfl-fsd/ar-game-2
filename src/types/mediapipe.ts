@@ -16,19 +16,10 @@ export interface MediaPipeHandsInstance {
   close?(): void;
 }
 
-export interface MediaPipeCameraInstance {
-  start(): Promise<void>;
-  stop?(): void;
-}
-
 declare global {
   interface Window {
     Hands: new (config: {
       locateFile: (file: string) => string;
     }) => MediaPipeHandsInstance;
-    Camera: new (
-      video: HTMLVideoElement,
-      config: { onFrame: () => Promise<void>; width: number; height: number },
-    ) => MediaPipeCameraInstance;
   }
 }

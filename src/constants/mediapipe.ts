@@ -1,6 +1,9 @@
+// Only the Hands model script is loaded from the CDN; the camera feed is
+// acquired directly via getUserMedia (see services/tracker.ts) instead of
+// @mediapipe/camera_utils, whose Camera.start() calls window.alert() on
+// getUserMedia failure — including expected cases like permission denial.
 export const MEDIAPIPE_SCRIPTS = [
   "https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js",
-  "https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js",
 ] as const;
 
 export const MEDIAPIPE_HANDS_LOCATE_FILE_BASE =
