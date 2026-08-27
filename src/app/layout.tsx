@@ -10,9 +10,9 @@ const poppins = Poppins({
 
 export const metadata: Metadata = {
   title: "AR EPFL",
-  description: "Throw the EPFL logo",
+  description: "Lance le logo de l'EPFL",
   icons: {
-    icon: [{ url: "https://epfl-si.github.io/elements/svg/epfl-logo.svg" }],
+    icon: [{ url: "/epfl-logo.svg" }],
   },
 };
 
@@ -22,7 +22,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${poppins.variable} h-full`}>
+    <html lang="fr" className={`${poppins.variable} h-full`}>
       <body className="h-dvh w-dvw overflow-hidden antialiased">
         {children}
       </body>
