@@ -3,7 +3,9 @@ set -euo pipefail
 
 NAMESPACE="svc0176p-isas-fsd"
 SECRET_NAME="ar-game-2-secrets"
-ENV_FILE="$(dirname "$0")/.env"
+SCRIPT_DIR="$(dirname "$0")"
+ENV_FILE="$SCRIPT_DIR/.env"
+VERSION="$(node -p "require('$SCRIPT_DIR/package.json').version")"
 
 if [[ ! -f "$ENV_FILE" ]]; then
   echo "Missing $ENV_FILE" >&2
@@ -15,4 +17,4 @@ oc create secret generic "$SECRET_NAME" \
   --from-env-file="$ENV_FILE" \
   --dry-run=client -o yaml | oc apply -f -
 
-oc apply -f "$(dirname "$0")/deploy.yaml" --server-side --namespace "$NAMESPACE"
+sed "s/:VERSION\$/:$VERSION/" "$SCRIPT_DIR/deploy.yaml" | oc apply -f - --server-side --namespace "$NAMESPACE"
