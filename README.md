@@ -42,11 +42,17 @@ Copy the example environment file and fill in the values:
 cp .env.example .env
 ```
 
-| Variable        | Description                    |
-| --------------- | ------------------------------ |
-| `APP_URL`       | Public URL of the app          |
-| `MAIL_USERNAME` | SMTP username for Nodemailer   |
-| `MAIL_PASSWORD` | SMTP password for Nodemailer   |
+| Variable        | Description                             |
+| --------------- | --------------------------------------- |
+| `APP_URL`       | Public URL (used in e-mail links)       |
+| `MAIL_HOST`     | SMTP host                               |
+| `MAIL_PORT`     | SMTP port                               |
+| `MAIL_USERNAME` | SMTP username                           |
+| `MAIL_PASSWORD` | SMTP password                           |
+| `MAIL_FROM`     | Sender address ("Name <name@host.tld>") |
+| `MAIL_CC`       | Optional CC on every message            |
+| `MAIL_BCC`      | Optional BCC on every message           |
+| `MAIL_REPLYTO`  | Optional Reply-To on every message      |
 
 Start the development server:
 
