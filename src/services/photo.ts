@@ -78,12 +78,24 @@ export async function addPhotoFrame(
 
   // EPFL wordmark, left-padded from the border.
   const logoWidth = iconHeight * EPFL_LOGO_ASPECT;
+  const logoX = border - logoHeight / 1.5;
   ctx.drawImage(
     logoImage,
-    border - logoHeight / 1.5,
+    logoX,
     barCenterY - logoHeight / 2,
     logoWidth,
     logoHeight,
+  );
+
+  // Event name, to the right of the logo, vertically centered with it.
+  ctx.fillStyle = "#1a1a1a";
+  ctx.font = `${Math.round(iconHeight * 0.32)}px Arial, Helvetica, sans-serif`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(
+    "Swiss Coding Club Meet Up",
+    logoX + logoWidth + logoHeight * 0.4,
+    barCenterY,
   );
 
   return framed.toDataURL("image/png");

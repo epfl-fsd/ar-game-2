@@ -24,13 +24,23 @@ spec:
     spec:
       containers:
         - name: ar-game-2
-          image: ghcr.io/epfl-fsd/ar-game-2:latest
+          image: ghcr.io/epfl-fsd/ar-game-2:0.4.0
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
           env:
             - name: APP_URL
               value: https://ar.fsd.epfl.ch
+            - name: MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: ar-game-2-secrets
+                  key: MAIL_USERNAME
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ar-game-2-secrets
+                  key: MAIL_PASSWORD
           resources:
             requests:
               memory: 256Mi

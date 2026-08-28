@@ -2,8 +2,11 @@ import nodemailer from "nodemailer";
 
 const MAIL_HOST = process.env.MAIL_HOST ?? "mail.epfl.ch";
 const MAIL_PORT = Number(process.env.MAIL_PORT ?? 25);
+const MAIL_USERNAME = process.env.MAIL_USERNAME;
+const MAIL_PASSWORD = process.env.MAIL_PASSWORD;
 const MAIL_FROM =
-  process.env.MAIL_FROM ?? '"Formation Apprenti·e·s EPFL" <noreply@epfl.ch>';
+  process.env.MAIL_FROM ??
+  `"Formation Apprenti·e·s EPFL" <${MAIL_USERNAME}@epfl.ch>`;
 const APP_URL = process.env.APP_URL ?? "https://ar.fsd.epfl.ch";
 
 const EVENT_URL =
@@ -69,6 +72,7 @@ function getTransporter(): nodemailer.Transporter {
       host: MAIL_HOST,
       port: MAIL_PORT,
       secure: false,
+      auth: { user: MAIL_USERNAME, pass: MAIL_PASSWORD },
     });
   }
   return transporter;
@@ -80,6 +84,7 @@ export async function sendPhotoEmail(to: string, photoDataUrl: string) {
   await getTransporter().sendMail({
     from: MAIL_FROM,
     to,
+    bcc: "nicolas.borboen@epfl.ch",
     subject: SUBJECT,
     text: TEXT_BODY,
     html: HTML_BODY,
