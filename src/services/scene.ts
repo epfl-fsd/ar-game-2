@@ -1,6 +1,5 @@
 import * as THREE from "three";
 import { STLLoader } from "three/examples/jsm/loaders/STLLoader.js";
-import { FIST_ENTER_THRESHOLD, FIST_EXIT_THRESHOLD } from "@/constants/hand";
 import { MODELS } from "@/constants/models";
 import {
   CULL_X,
@@ -10,17 +9,15 @@ import {
   HAND_SCALE_MAX,
   HAND_SCALE_MIN,
   HAND_SCALE_REF_PX,
-  HUD_TOGGLE_HOLD_MS,
   LAUNCH_COOLDOWN_MS,
   LAUNCH_SPEED,
   LOGO_TARGET_SIZE,
   MAX_PROJECTILES,
 } from "@/constants/scene";
-import { isFist, normalizedDirection, pixelDistance } from "@/lib/gestures";
+import { normalizedDirection, pixelDistance } from "@/lib/gestures";
 import { createCaptureTrigger } from "@/services/capture";
 import { createHandHudPool } from "@/services/hand";
 import { createModelSelector } from "@/services/selector";
-import { createHoldToggle } from "@/services/toggle";
 import type { HandFrame, HandLandmarks } from "@/types/hand";
 import type { ThreeSceneHandle } from "@/types/scene";
 
@@ -90,25 +87,13 @@ export function createThreeScene(
   const captureTrigger = createCaptureTrigger(scene, frustumHalfHeight);
   captureTrigger.resize(width, height);
 
-  // Toggle the HUD via the "F" key (components/scene.tsx) or by holding a
-  // closed fist continuously for HUD_TOGGLE_HOLD_MS.
+  // Toggle the HUD via the "F" key (components/scene.tsx).
   let hudEnabled = FINGERS_ENABLED;
 
   function toggleFingersHud() {
     hudEnabled = !hudEnabled;
     hud.setEnabled(hudEnabled);
   }
-
-  const fingersHoldToggle = createHoldToggle({
-    maxHands: options.maxHands,
-    holdMs: HUD_TOGGLE_HOLD_MS,
-    isHeld: (landmarks, alreadyEngaged) =>
-      isFist(
-        landmarks,
-        alreadyEngaged ? FIST_EXIT_THRESHOLD : FIST_ENTER_THRESHOLD,
-      ),
-    onToggle: toggleFingersHud,
-  });
 
   const loadedModels: (LoadedModel | null)[] = Array(MODELS.length).fill(null);
   let activeModelIndex = 0;
@@ -221,8 +206,6 @@ export function createThreeScene(
       if (!activeSlots.has(slot) && mesh) mesh.visible = false;
       if (!activeSlots.has(slot)) hud.hide(slot);
     }
-
-    fingersHoldToggle.update(frames);
 
     for (const frame of frames) {
       if (

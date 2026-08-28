@@ -22,9 +22,6 @@ export const HUD_COLOR = 0xffffff;
 export const HUD_SQUARE_SIZE = 0.18;
 export const HUD_LINE_OPACITY = 0.85;
 
-// Toggle the HUD on/off by holding a closed fist continuously this long.
-export const HUD_TOGGLE_HOLD_MS = 10000;
-
 // Model-selector boxes: hold a fingertip inside one to switch the held model.
 // Stacked vertically in the bottom-right corner.
 export const SELECTOR_BOX_SIZE = 0.85;
