@@ -98,5 +98,9 @@ export async function addPhotoFrame(
     barCenterY,
   );
 
+  // Photo URL, right-aligned before the QR code, vertically centered with it.
+  ctx.textAlign = "right";
+  ctx.fillText(PHOTO_URL, qrX - logoHeight * 0.4, barCenterY);
+
   return framed.toDataURL("image/png");
 }
