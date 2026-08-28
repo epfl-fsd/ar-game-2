@@ -2,7 +2,7 @@ export const LOGO_TARGET_SIZE = 1.6;
 
 // Self-timer countdown (seconds) between tapping the capture button and the
 // photo actually being taken.
-export const PHOTO_COUNTDOWN_S = 10;
+export const PHOTO_COUNTDOWN_S = 5;
 
 export const MAX_PROJECTILES = 60;
 export const LAUNCH_SPEED = 0.1;
