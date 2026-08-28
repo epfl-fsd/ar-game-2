@@ -76,8 +76,8 @@ function getTransporter(): nodemailer.Transporter {
       secure: false,
       auth: { user: MAIL_USERNAME, pass: MAIL_PASSWORD },
       requireTLS: true,
-      logger: true,
-      debug: true,
+      // logger: true,
+      // debug: true,
     });
   }
   return transporter;
