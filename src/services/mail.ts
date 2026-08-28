@@ -2,20 +2,22 @@ import nodemailer from "nodemailer";
 
 const MAIL_HOST = process.env.MAIL_HOST ?? "mail.epfl.ch";
 const MAIL_PORT = Number(process.env.MAIL_PORT ?? 25);
-const MAIL_USERNAME = process.env.MAIL_USERNAME;
-const MAIL_PASSWORD = process.env.MAIL_PASSWORD;
-const MAIL_FROM =
-  process.env.MAIL_FROM ??
-  `"Formation Apprenti·e·s EPFL" <${MAIL_USERNAME}@epfl.ch>`;
+const MAIL_USERNAME = process.env.MAIL_USERNAME ?? "noreply";
+const MAIL_PASSWORD = process.env.MAIL_PASSWORD ?? "";
+const MAIL_FROM = process.env.MAIL_FROM ?? `"${MAIL_USERNAME}@epfl.ch"`;
+const MAIL_CC = process.env.MAIL_CC ?? "";
+const MAIL_BCC = process.env.MAIL_BCC ?? "";
+const MAIL_REPLYTO = process.env.MAIL_REPLYTO ?? "";
+
 const APP_URL = process.env.APP_URL ?? "https://ar.fsd.epfl.ch";
 
 const EVENT_URL =
   "https://www.epfl.ch/education/education-and-science-outreach/fr/jeunepublic/coding-club/swiss-coding-club-meet-up/";
 const APPRENTISSAGE_URL = "https://apprentissage.epfl.ch";
 
-const SUBJECT = "Photo - Swiss Coding Club Meet Up";
+const SUBJECT = "Photo – Swiss Coding Club Meet Up";
 
-const TEXT_BODY = `Photo - Swiss Coding Club Meet Up
+const TEXT_BODY = `Photo – Swiss Coding Club Meet Up
 
 Bonjour,
 
@@ -73,6 +75,9 @@ function getTransporter(): nodemailer.Transporter {
       port: MAIL_PORT,
       secure: false,
       auth: { user: MAIL_USERNAME, pass: MAIL_PASSWORD },
+      requireTLS: true,
+      logger: true,
+      debug: true,
     });
   }
   return transporter;
@@ -84,7 +89,9 @@ export async function sendPhotoEmail(to: string, photoDataUrl: string) {
   await getTransporter().sendMail({
     from: MAIL_FROM,
     to,
-    bcc: "nicolas.borboen@epfl.ch",
+    cc: MAIL_CC,
+    bcc: MAIL_BCC,
+    replyTo: MAIL_REPLYTO,
     subject: SUBJECT,
     text: TEXT_BODY,
     html: HTML_BODY,
