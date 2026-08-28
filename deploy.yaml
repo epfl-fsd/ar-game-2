@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: ar-game-2
-          image: ghcr.io/epfl-fsd/ar-game-2:0.5.0
+          image: ghcr.io/epfl-fsd/ar-game-2:0.5.1
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
