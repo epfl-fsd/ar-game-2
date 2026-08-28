@@ -15,4 +15,4 @@ oc create secret generic "$SECRET_NAME" \
   --from-env-file="$ENV_FILE" \
   --dry-run=client -o yaml | oc apply -f -
 
-oc apply -f "$(dirname "$0")/deploy.yaml"
+oc apply -f "$(dirname "$0")/deploy.yaml" --server-side --namespace "$NAMESPACE"
